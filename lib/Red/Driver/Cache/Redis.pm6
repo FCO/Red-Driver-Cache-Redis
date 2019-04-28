@@ -5,6 +5,7 @@ use Red::AST;
 use Red::AST::Select;
 use Red::AST::Infix;
 use Red::AST::Value;
+use Red::AST::LastInsertedRow;
 use Red::Statement;
 use JSON::Fast;
 use Redis;
@@ -16,6 +17,8 @@ has Red::Driver  $.driver         = database $!driver-name, |$!driver-capture;
 has Str          $.redis-host     = "127.0.0.1";
 has UInt         $.redis-port     = 6379;
 has Redis        $.redis         .= new: "{ $!redis-host }:{ $!redis-port }";
+
+class X::Red::Driver::Cache::Redis::DoNotCache is Exception {}
 
 multi method default-type-for(Red::Column $a --> Str:D) { $!driver.default-type-for($a)      }
 multi method is-valid-table-name(|c)                    { $!driver.is-valid-table-name(|c)   }
@@ -54,6 +57,11 @@ class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST::Select $_ ) {
+    CATCH {
+        default {
+            return $!driver.prepare: $_
+        }
+    }
     my $cache-key = self.translate-key: $_, "select";
     with $!redis.get: $cache-key {
         note "Got from cache: $cache-key" if $*RED-CACHE-REDIS-DEBUG;
@@ -62,6 +70,10 @@ multi method prepare(Red::AST::Select $_ ) {
     do for $!driver.prepare: $_ -> $stt {
         Statement.new: :driver(self), :$!redis, :$stt, :$cache-key
     }
+}
+
+multi method translate-key(Red::AST::LastInsertedRow $_, $context?)  {
+    X::Red::Driver::Cache::Redis::DoNotCache.new.throw
 }
 
 multi method translate-key(Red::Column $_, $context?)  {
