@@ -16,7 +16,7 @@
     "Red::Driver::Cache::Redis" : "lib/Red/Driver/Cache/Redis.pm6"
   },
   "resources" : [ ],
-  "source-url" : "",
+  "source-url" : "https://github.com/FCO/Red-Driver-Cache-Redis.git",
   "tags" : [ ],
   "test-depends" : [ ],
   "version" : "0.0.1"
